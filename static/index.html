@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>DFL Tool - Real-time Dashboard v4.1</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .btn-primary {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #059669;
+        }
+        
+        .btn-secondary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #d97706;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .status-bar {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .status-item {
+            text-align: center;
+        }
+        
+        .status-label {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        
+        .status-value.running {
+            color: #10b981;
+        }
+        
+        .status-value.stopped {
+            color: #ef4444;
+        }
+        
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .chart-title {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .peers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .peer-card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .peer-header {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .peer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .peer-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .peer-row:last-child {
+            border-bottom: none;
+        }
+        
+        .peer-label {
+            opacity: 0.7;
+        }
+        
+        .peer-value {
+            font-weight: 600;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal-content {
+            background: #1e293b;
+            margin: 50px auto;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            opacity: 0.7;
+        }
+        
+        .error {
+            background: #7f1d1d;
+            color: #fecaca;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .success {
+            background: #14532d;
+            color: #bbf7d0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 DFL Tool Dashboard</h1>
+            <div style="margin-top: 15px; font-size: 0.9em;">
+                <label style="margin-right: 10px;">API Endpoint:</label>
+                <select id="apiEndpointSelect" onchange="updateApiEndpoint()" style="padding: 5px 10px; border-radius: 6px; background: #1e293b; color: #e2e8f0; border: 1px solid #334155;">
+                    <option value="auto">Auto-detect</option>
+                    <option value="localhost">localhost:8000</option>
+                    <option value="custom">Custom...</option>
+                </select>
+                <input type="text" id="customApiEndpoint" placeholder="http://192.168.1.7:8000" 
+                       style="display: none; margin-left: 10px; padding: 5px 10px; border-radius: 6px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; width: 250px;">
+                <button onclick="applyCustomEndpoint()" id="applyEndpointBtn" style="display: none; margin-left: 10px; padding: 5px 15px; border-radius: 6px; background: #3b82f6; color: white; border: none; cursor: pointer;">Apply</button>
+                <span id="currentApiEndpoint" style="margin-left: 15px; opacity: 0.7; font-size: 0.85em;"></span>
+            </div>
+        </header>
+        
+        <div id="message"></div>
+        
+        <div class="controls">
+            <button class="btn-primary" onclick="showConfigModal()">⚙️ Configure & Initialize</button>
+            <button class="btn-secondary" onclick="startTraining()" id="startBtn" disabled>▶️ Start Training</button>
+            <button class="btn-secondary" onclick="stepTraining()" id="stepBtn" disabled>⏭️ Run 1 Round</button>
+            <div style="display: inline-flex; align-items: center; gap: 5px;">
+                <input type="number" id="nRounds" value="5" min="1" max="100" style="width: 60px; padding: 8px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                <button class="btn-secondary" onclick="runNRounds()" id="runNBtn" disabled>🔢 Run N Rounds</button>
+            </div>
+            <button class="btn-warning" onclick="resetSystem()" id="resetBtn" disabled>🔄 Reset</button>
+            <button class="btn-secondary" onclick="toggleAutoRefresh()">Auto: <span id="autoStatus">OFF</span></button>
+            <button class="btn-secondary" onclick="showTopologyModal()" id="topologyBtn" disabled>🔗 Topology</button>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Status</div>
+                    <div class="status-value stopped" id="statusValue">Not Initialized</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Current Round</div>
+                    <div class="status-value" id="roundValue">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Active Peers</div>
+                    <div class="status-value" id="peersValue">0/0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Train Loss</div>
+                    <div class="status-value" id="lossValue">-</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Eval MSE</div>
+                    <div class="status-value" id="mseValue">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="charts">
+            <div class="chart-container">
+                <div class="chart-title">Training & Eval Loss</div>
+                <div id="lossChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Mean Squared Error (MSE)</div>
+                <div id="mseChart"></div>
+            </div>
+        </div>
+        
+        <div class="charts">
+            <div class="chart-container">
+                <div class="chart-title">Peer Data Distribution</div>
+                <div id="dataDistChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Peer Train Loss Comparison</div>
+                <div id="peerLossChart"></div>
+            </div>
+        </div>
+        
+        <h2 style="margin-bottom: 20px; text-align: center;">Peer Details</h2>
+        <div class="peers-grid" id="peersGrid">
+            <div class="loading">No peers initialized</div>
+        </div>
+        
+        <!-- Configuration Modal -->
+        <div id="configModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto;">
+            <div style="background: #1e293b; margin: 50px auto; max-width: 600px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                <h2 style="margin-bottom: 20px;">System Configuration</h2>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Number of Peers (2-20):</label>
+                        <input type="number" id="numPeers" value="3" min="2" max="20" onchange="updatePeerDataFractions()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">
+                            <input type="checkbox" id="enablePeerDataFractions" onchange="togglePeerDataFractions()"> 
+                            Customize data amount per peer
+                        </label>
+                    </div>
+                    <div id="peerDataFractionsContainer" style="display: none; background: #0f172a; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                        <div style="margin-bottom: 10px; font-weight: 600; opacity: 0.9;">Data Fraction per Peer (0.0 - 1.0):</div>
+                        <div id="peerDataFractionInputs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.85em; opacity: 0.7;">
+                            Total: <span id="fractionsTotal">0.00</span> (max 1.0)
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Topology Hops (comma separated):</label>
+                        <input type="text" id="hops" value="1" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Data Distribution:</label>
+                        <select id="dataDistribution" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                            <option value="iid">IID (Independent and Identically Distributed)</option>
+                            <option value="non_iid">Non-IID (Dirichlet Distribution)</option>
+                            <option value="label_skew">Label Skew (Few labels per peer)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Local Epochs:</label>
+                        <input type="number" id="localEpochs" value="2" min="1" max="10" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Learning Rate:</label>
+                        <input type="number" id="learningRate" value="0.001" step="0.0001" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Batch Size:</label>
+                        <input type="number" id="batchSize" value="64" min="16" max="256" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Aggregation Method:</label>
+                        <select id="aggregateMethod" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                            <option value="FedAvg">FedAvg (Federated Averaging)</option>
+                            <option value="FedProx">FedProx (with Proximal Term)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Network Latency (ms):</label>
+                        <input type="number" id="latency" value="0" min="0" max="1000" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Message Drop Probability (0-1):</label>
+                        <input type="number" id="dropProb" value="0" min="0" max="1" step="0.01" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-primary" onclick="initSystem()" style="flex: 1;">Initialize</button>
+                    <button class="btn-secondary" onclick="closeConfigModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Topology Modal -->
+        <div id="topologyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto;">
+            <div style="background: #1e293b; margin: 50px auto; max-width: 800px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                <h2 style="margin-bottom: 20px;">Network Topology</h2>
+                <div id="topologyContent"></div>
+                <div style="margin-top: 20px;">
+                    <button class="btn-secondary" onclick="closeTopologyModal()">Close</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Logs Modal -->
+        <div id="logsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto;">
+            <div style="background: #1e293b; margin: 50px auto; max-width: 900px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                <h2 style="margin-bottom: 20px;">System Logs</h2>
+                <div id="logsContent" style="background: #0f172a; padding: 15px; border-radius: 8px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.9em;"></div>
+                <div style="margin-top: 20px;">
+                    <button class="btn-secondary" onclick="closeLogsModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // v4.0 - Cache busted 2025-11-23
+        // API endpoint configuration - can be changed via environment or URL parameter
+        const getApiEndpoint = () => {
+            // Check localStorage for saved custom endpoint
+            const saved = localStorage.getItem('dfl_api_endpoint');
+            if (saved) return saved;
+            
+            // Check URL parameter first
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlApi = urlParams.get('api');
+            if (urlApi) return urlApi;
+            
+            // Check if running on localhost
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:8000/api';
+            }
+            
+            // Use same host as current page
+            return `http://${hostname}:8000/api`;
+        };
+        
+        let API_BASE = getApiEndpoint();
+        console.log('Using API endpoint:', API_BASE);
+        
+        // Update API endpoint display
+        function updateApiEndpointDisplay() {
+            document.getElementById('currentApiEndpoint').textContent = `Using: ${API_BASE}`;
+        }
+        
+        window.updateApiEndpoint = function() {
+            const select = document.getElementById('apiEndpointSelect');
+            const customInput = document.getElementById('customApiEndpoint');
+            const applyBtn = document.getElementById('applyEndpointBtn');
+            
+            if (select.value === 'custom') {
+                customInput.style.display = 'inline';
+                applyBtn.style.display = 'inline';
+            } else {
+                customInput.style.display = 'none';
+                applyBtn.style.display = 'none';
+                
+                if (select.value === 'localhost') {
+                    API_BASE = 'http://localhost:8000/api';
+                } else {
+                    // Auto-detect
+                    const hostname = window.location.hostname;
+                    API_BASE = hostname === 'localhost' || hostname === '127.0.0.1' 
+                        ? 'http://localhost:8000/api' 
+                        : `http://${hostname}:8000/api`;
+                }
+                
+                localStorage.removeItem('dfl_api_endpoint');
+                updateApiEndpointDisplay();
+                showMessage('API endpoint updated to: ' + API_BASE, 'success');
+            }
+        }
+        
+        window.applyCustomEndpoint = function() {
+            const customInput = document.getElementById('customApiEndpoint');
+            let endpoint = customInput.value.trim();
+            
+            if (!endpoint) {
+                showMessage('Please enter a valid endpoint', 'error');
+                return;
+            }
+            
+            // Ensure it ends with /api
+            if (!endpoint.endsWith('/api')) {
+                endpoint += '/api';
+            }
+            
+            API_BASE = endpoint;
+            localStorage.setItem('dfl_api_endpoint', endpoint);
+            updateApiEndpointDisplay();
+            showMessage('API endpoint updated to: ' + API_BASE, 'success');
+        }
+        
+        let autoRefresh = false;
+        let refreshInterval = null;
+        
+        // Peer data fractions management
+        window.updatePeerDataFractions = function() {
+            const numPeers = parseInt(document.getElementById('numPeers').value);
+            const container = document.getElementById('peerDataFractionInputs');
+            
+            container.innerHTML = '';
+            for (let i = 0; i < numPeers; i++) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label style="display: block; font-size: 0.9em; margin-bottom: 3px;">Peer ${i}:</label>
+                    <input type="number" id="peerFraction${i}" value="${(1/numPeers).toFixed(2)}" min="0" max="1" step="0.01" 
+                           onchange="updateFractionsTotal()"
+                           style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0;">
+                `;
+                container.appendChild(div);
+            }
+            updateFractionsTotal();
+        }
+        
+        window.togglePeerDataFractions = function() {
+            const enabled = document.getElementById('enablePeerDataFractions').checked;
+            const container = document.getElementById('peerDataFractionsContainer');
+            container.style.display = enabled ? 'block' : 'none';
+            
+            if (enabled) {
+                updatePeerDataFractions();
+            }
+        }
+        
+        window.updateFractionsTotal = function() {
+            const numPeers = parseInt(document.getElementById('numPeers').value);
+            let total = 0;
+            for (let i = 0; i < numPeers; i++) {
+                const input = document.getElementById(`peerFraction${i}`);
+                if (input) {
+                    total += parseFloat(input.value) || 0;
+                }
+            }
+            document.getElementById('fractionsTotal').textContent = total.toFixed(2);
+            
+            // Warn if total > 1.0
+            const totalEl = document.getElementById('fractionsTotal');
+            if (total > 1.0) {
+                totalEl.style.color = '#ef4444';
+                totalEl.style.fontWeight = 'bold';
+            } else {
+                totalEl.style.color = '#10b981';
+                totalEl.style.fontWeight = 'normal';
+            }
+        }
+        
+        // Initialize empty charts
+        const lossLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'Round', gridcolor: '#334155' },
+            yaxis: { title: 'Loss', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 40, l: 60 }
+        };
+        
+        const mseLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'Round', gridcolor: '#334155' },
+            yaxis: { title: 'MSE', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 40, l: 60 }
+        };
+        
+        const peerLossLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'Round', gridcolor: '#334155' },
+            yaxis: { title: 'Train Loss (MSE)', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 40, l: 60 },
+            showlegend: true,
+            legend: { x: 1.05, y: 1 }
+        };
+        
+        const dataDistLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'Peer ID', gridcolor: '#334155' },
+            yaxis: { title: 'Training Samples', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 40, l: 60 }
+        };
+        
+        Plotly.newPlot('lossChart', [], lossLayout);
+        Plotly.newPlot('mseChart', [], mseLayout);
+        Plotly.newPlot('peerLossChart', [], peerLossLayout);
+        Plotly.newPlot('dataDistChart', [], dataDistLayout);
+        
+        // Modal control functions - updated v3
+        window.showConfigModal = function() {
+            document.getElementById('configModal').style.display = 'block';
+        };
+        
+        window.closeConfigModal = function() {
+            document.getElementById('configModal').style.display = 'none';
+        };
+        
+        window.showTopologyModal = function() {
+            document.getElementById('topologyModal').style.display = 'block';
+            loadTopology();
+        };
+        
+        window.closeTopologyModal = function() {
+            document.getElementById('topologyModal').style.display = 'none';
+        };
+        
+        window.closeLogsModal = function() {
+            document.getElementById('logsModal').style.display = 'none';
+        };
+        
+        async function loadTopology() {
+            try {
+                const response = await fetch(`${API_BASE}/topology`);
+                const data = await response.json();
+                const content = document.getElementById('topologyContent');
+                
+                if (data.success && data.data) {
+                    const topology = data.data.topology;
+                    let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+                    
+                    Object.keys(topology).forEach(peerId => {
+                        const neighbors = topology[peerId];
+                        html += `
+                            <div style="background: #0f172a; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                <div style="font-weight: 600; margin-bottom: 10px; font-size: 1.1em;">Peer ${peerId}</div>
+                                <div style="opacity: 0.8;">Neighbors: ${neighbors.join(', ') || 'None'}</div>
+                                <div style="margin-top: 10px;">
+                                    <button class="btn-secondary" onclick="editPeerNeighbors(${peerId}, [${neighbors}])" style="padding: 6px 12px; font-size: 0.9em;">Edit Neighbors</button>
+                                    <button class="btn-warning" onclick="togglePeer(${peerId}, true)" style="padding: 6px 12px; font-size: 0.9em;">Enable</button>
+                                    <button class="btn-danger" onclick="togglePeer(${peerId}, false)" style="padding: 6px 12px; font-size: 0.9em;">Disable</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="error">Failed to load topology</div>';
+                }
+            } catch (error) {
+                document.getElementById('topologyContent').innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function loadLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/logs`);
+                const data = await response.json();
+                const content = document.getElementById('logsContent');
+                
+                if (data.success && data.data && data.data.logs) {
+                    const logs = data.data.logs;
+                    content.innerHTML = logs.map(log => `<div style="margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #334155;">${log}</div>`).join('');
+                } else {
+                    content.innerHTML = '<div class="loading">No logs available</div>';
+                }
+            } catch (error) {
+                document.getElementById('logsContent').innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+            }
+        }
+        
+        window.togglePeer = async function(peerId, enabled) {
+            try {
+                await fetch(`${API_BASE}/toggle_node`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        peer_id: peerId,
+                        enabled: enabled,
+                        fetch_model_from_neighbors: enabled
+                    })
+                });
+                showMessage(`✓ Peer ${peerId} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                loadTopology();
+                updateDashboard();
+            } catch (error) {
+                showMessage('✗ Failed to toggle peer: ' + error.message, 'error');
+            }
+        }
+        
+        async function editPeerNeighbors(peerId, currentNeighbors) {
+            const newNeighbors = prompt(`Enter neighbor IDs for Peer ${peerId} (comma-separated):`, currentNeighbors.join(','));
+            if (newNeighbors !== null) {
+                try {
+                    const neighbors = newNeighbors.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                    await fetch(`${API_BASE}/set_neighbors`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            peer_id: peerId,
+                            neighbors: neighbors
+                        })
+                    });
+                    showMessage(`✓ Updated neighbors for Peer ${peerId}`, 'success');
+                    loadTopology();
+                } catch (error) {
+                    showMessage('✗ Failed to update neighbors: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        window.initSystem = async function() {
+            try {
+                console.log('[DEBUG] initSystem called');
+                closeConfigModal();
+                showMessage('Initializing system...', 'info');
+                
+                const hopsStr = document.getElementById('hops').value;
+                const hops = hopsStr.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h));
+                
+                const numPeers = parseInt(document.getElementById('numPeers').value);
+                console.log('[DEBUG] numPeers:', numPeers, 'hops:', hops);
+                
+                // Get peer data fractions if enabled
+                let peerDataFractions = null;
+                if (document.getElementById('enablePeerDataFractions').checked) {
+                    peerDataFractions = [];
+                    for (let i = 0; i < numPeers; i++) {
+                        const input = document.getElementById(`peerFraction${i}`);
+                        peerDataFractions.push(parseFloat(input.value) || 0);
+                    }
+                    
+                    // Validate total
+                    const total = peerDataFractions.reduce((a, b) => a + b, 0);
+                    if (total > 1.0) {
+                        showMessage('✗ Total data fractions cannot exceed 1.0', 'error');
+                        showConfigModal();
+                        return;
+                    }
+                }
+                
+                const requestBody = {
+                    num_peers: numPeers,
+                    hops: hops,
+                    data_distribution: document.getElementById('dataDistribution').value,
+                    local_epochs: parseInt(document.getElementById('localEpochs').value),
+                    learning_rate: parseFloat(document.getElementById('learningRate').value),
+                    batch_size: parseInt(document.getElementById('batchSize').value),
+                    aggregate_method: document.getElementById('aggregateMethod').value,
+                    latency_ms: parseFloat(document.getElementById('latency').value),
+                    drop_prob: parseFloat(document.getElementById('dropProb').value),
+                    dataset: 'bearing'
+                };
+                
+                // Add peer_data_fractions if enabled
+                if (peerDataFractions) {
+                    requestBody.peer_data_fractions = peerDataFractions;
+                    console.log('[DEBUG] peer_data_fractions:', peerDataFractions);
+                }
+                
+                console.log('[DEBUG] Init request body:', requestBody);
+                const response = await fetch(`${API_BASE}/init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                console.log('[DEBUG] Init response status:', response.status);
+                const data = await response.json();
+                console.log('[DEBUG] Init response data:', data);
+                showMessage('✓ System initialized successfully!', 'success');
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stepBtn').disabled = false;
+                document.getElementById('runNBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+                document.getElementById('topologyBtn').disabled = false;
+                await updateDashboard();
+            } catch (error) {
+                showMessage('✗ Failed to initialize: ' + error.message, 'error');
+            }
+        }
+        
+        window.startTraining = async function() {
+            try {
+                console.log('[DEBUG] startTraining called');
+                const response = await fetch(`${API_BASE}/start`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_rounds: null, continuous: false })
+                });
+                console.log('[DEBUG] Start response status:', response.status);
+                const data = await response.json();
+                console.log('[DEBUG] Start response data:', data);
+                showMessage('✓ Training started!', 'success');
+                await updateDashboard();
+            } catch (error) {
+                showMessage('✗ Failed to start: ' + error.message, 'error');
+            }
+        }
+        
+        window.stepTraining = async function() {
+            try {
+                console.log('[DEBUG] stepTraining called');
+                showMessage('Running training round...', 'info');
+                const response = await fetch(`${API_BASE}/step`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ timeout: 30.0 })
+                });
+                console.log('[DEBUG] Step response status:', response.status);
+                const data = await response.json();
+                console.log('[DEBUG] Step response data:', data);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await updateDashboard();
+                showMessage('✓ Round completed!', 'success');
+            } catch (error) {
+                showMessage('✗ Failed to step: ' + error.message, 'error');
+            }
+        }
+        
+        window.runNRounds = async function() {
+            try {
+                const n = parseInt(document.getElementById('nRounds').value);
+                if (isNaN(n) || n < 1 || n > 100) {
+                    showMessage('✗ Please enter a valid number of rounds (1-100)', 'error');
+                    return;
+                }
+                
+                console.log(`[DEBUG] runNRounds called with N=${n}`);
+                
+                // Disable controls during execution
+                const runNBtn = document.getElementById('runNBtn');
+                const stepBtn = document.getElementById('stepBtn');
+                const startBtn = document.getElementById('startBtn');
+                const originalRunNDisabled = runNBtn.disabled;
+                const originalStepDisabled = stepBtn.disabled;
+                const originalStartDisabled = startBtn.disabled;
+                
+                runNBtn.disabled = true;
+                stepBtn.disabled = true;
+                startBtn.disabled = true;
+                
+                for (let i = 1; i <= n; i++) {
+                    showMessage(`Running round ${i}/${n}...`, 'info');
+                    
+                    const response = await fetch(`${API_BASE}/step`, { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ timeout: 30.0 })
+                    });
+                    
+                    const data = await response.json();
+                    console.log(`[DEBUG] Round ${i}/${n} response:`, data);
+                    
+                    // Update dashboard after each round
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await updateDashboard();
+                }
+                
+                // Re-enable controls
+                runNBtn.disabled = originalRunNDisabled;
+                stepBtn.disabled = originalStepDisabled;
+                startBtn.disabled = originalStartDisabled;
+                
+                showMessage(`✓ Completed ${n} rounds!`, 'success');
+            } catch (error) {
+                showMessage('✗ Failed to run N rounds: ' + error.message, 'error');
+                // Re-enable controls on error
+                document.getElementById('runNBtn').disabled = false;
+                document.getElementById('stepBtn').disabled = false;
+                document.getElementById('startBtn').disabled = false;
+            }
+        }
+        
+        window.resetSystem = async function() {
+            try {
+                await fetch(`${API_BASE}/reset`, { method: 'POST' });
+                showMessage('✓ System reset!', 'success');
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stepBtn').disabled = true;
+                document.getElementById('resetBtn').disabled = true;
+                document.getElementById('topologyBtn').disabled = true;
+                Plotly.newPlot('lossChart', [], lossLayout);
+                Plotly.newPlot('mseChart', [], mseLayout);
+                Plotly.newPlot('peerLossChart', [], peerLossLayout);
+                document.getElementById('peersGrid').innerHTML = '<div class="loading">No peers initialized</div>';
+            } catch (error) {
+                showMessage('✗ Failed to reset: ' + error.message, 'error');
+            }
+        }
+        
+        window.toggleAutoRefresh = function() {
+            autoRefresh = !autoRefresh;
+            document.getElementById('autoStatus').textContent = autoRefresh ? 'ON' : 'OFF';
+            
+            if (autoRefresh) {
+                refreshInterval = setInterval(updateDashboard, 2000);
+                showMessage('Auto-refresh enabled (every 2s)', 'success');
+            } else {
+                clearInterval(refreshInterval);
+                showMessage('Auto-refresh disabled', 'info');
+            }
+        }
+        
+        async function updateDashboard() {
+            try {
+                console.log('[DEBUG] updateDashboard: fetching status and metrics');
+                const [statusRes, metricsRes] = await Promise.all([
+                    fetch(`${API_BASE}/status`).then(r => r.json()),
+                    fetch(`${API_BASE}/metrics`).then(r => r.json())
+                ]);
+                console.log('[DEBUG] Status response:', statusRes);
+                console.log('[DEBUG] Metrics response:', metricsRes);
+                
+                // Extract data from response
+                const status = statusRes.data || statusRes;
+                const metrics = metricsRes.data || metricsRes;
+                
+                updateStatus(status);
+                updateCharts(metrics, status);  // Pass status for data distribution
+                updatePeers(metrics);
+            } catch (error) {
+                console.error('Update failed:', error);
+            }
+        }
+        
+        function updateStatus(status) {
+            const statusEl = document.getElementById('statusValue');
+            statusEl.textContent = status.running ? 'Running' : 'Ready';
+            statusEl.className = 'status-value ' + (status.running ? 'running' : 'stopped');
+            
+            document.getElementById('roundValue').textContent = status.current_round || 0;
+            
+            // Handle peers array safely
+            if (status.peers && Array.isArray(status.peers)) {
+                const activePeers = status.peers.filter(p => p.enabled).length;
+                document.getElementById('peersValue').textContent = `${activePeers}/${status.num_peers}`;
+            } else {
+                document.getElementById('peersValue').textContent = `0/${status.num_peers || 0}`;
+            }
+        }
+        
+        function updateCharts(metrics, status) {
+            console.log('[DEBUG] updateCharts called with:', metrics);
+            const global = metrics.global_metrics;
+            if (!global || global.length === 0) {
+                console.log('[DEBUG] No global metrics data');
+                return;
+            }
+            
+            const rounds = global.map(m => m.round);
+            const trainLoss = global.map(m => m.global_train_loss);
+            const evalLoss = global.map(m => m.global_eval_loss);
+            const mse = global.map(m => m.global_eval_mse);  // MSE for autoencoder anomaly detection
+            const peerMetrics = metrics.peer_metrics || {};
+            
+            console.log('[DEBUG] Rounds:', rounds);
+            console.log('[DEBUG] Train loss:', trainLoss);
+            console.log('[DEBUG] MSE:', mse);
+            
+            // Update status values
+            const latest = global[global.length - 1];
+            document.getElementById('lossValue').textContent = latest.global_train_loss.toFixed(4);
+            document.getElementById('mseValue').textContent = latest.global_eval_mse.toFixed(4);
+            
+            // Update loss chart - with global and per-peer traces
+            const lossTraces = [
+                { x: rounds, y: trainLoss, name: 'Global Train Loss', type: 'scatter', mode: 'lines+markers', 
+                  line: { color: '#ef4444', width: 3 }, marker: { size: 8 } },
+                { x: rounds, y: evalLoss, name: 'Global Eval Loss', type: 'scatter', mode: 'lines+markers', 
+                  line: { color: '#3b82f6', width: 3 }, marker: { size: 8 } }
+            ];
+            
+            // Add per-peer loss traces
+            if (peerMetrics && Object.keys(peerMetrics).length > 0) {
+                // Define colors for peer traces (lighter shades)
+                const peerColors = ['#fca5a5', '#93c5fd', '#86efac', '#fde047', '#d8b4fe', '#fdba74', '#e9d5ff'];
+                
+                Object.keys(peerMetrics).forEach((peerId, idx) => {
+                    const peerData = peerMetrics[peerId];
+                    if (peerData.train_loss && peerData.train_loss.length > 0) {
+                        const peerRounds = peerData.train_loss.map((_, i) => i + 1);
+                        lossTraces.push({
+                            x: peerRounds,
+                            y: peerData.train_loss,
+                            name: `Peer ${peerId} Train`,
+                            type: 'scatter',
+                            mode: 'lines',
+                            line: { color: peerColors[idx % peerColors.length], width: 1, dash: 'dot' },
+                            opacity: 0.6
+                        });
+                    }
+                });
+            }
+            
+            Plotly.react('lossChart', lossTraces, lossLayout);
+            
+            // Update MSE chart
+            Plotly.react('mseChart', [
+                { x: rounds, y: mse, name: 'MSE', type: 'scatter', mode: 'lines+markers', 
+                  line: { color: '#10b981' }, fill: 'tozeroy' }
+            ], mseLayout);
+            
+            // Update peer loss comparison chart (train loss per peer over rounds)
+            if (peerMetrics && Object.keys(peerMetrics).length > 0) {
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'];
+                
+                const peerLossTraces = Object.keys(peerMetrics).sort((a, b) => parseInt(a) - parseInt(b)).map((peerId, idx) => {
+                    const pm = peerMetrics[peerId];
+                    if (pm.train_loss && pm.train_loss.length > 0) {
+                        const peerRounds = pm.train_loss.map((_, i) => i + 1);
+                        return {
+                            x: peerRounds,
+                            y: pm.train_loss,
+                            name: `Peer ${peerId}`,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            line: { color: colors[idx % colors.length], width: 2 },
+                            marker: { size: 6 }
+                        };
+                    }
+                    return null;
+                }).filter(t => t !== null);
+                
+                console.log('[DEBUG] Peer loss traces:', peerLossTraces.length);
+                Plotly.react('peerLossChart', peerLossTraces, peerLossLayout);
+            }
+            
+            // Update data distribution chart (training samples per peer)
+            if (status && status.peers && status.peers.length > 0) {
+                const peerIds = status.peers.map(p => `Peer ${p.peer_id}`);
+                const trainSamples = status.peers.map(p => p.num_train_samples || 0);
+                
+                const dataDistTrace = {
+                    x: peerIds,
+                    y: trainSamples,
+                    type: 'bar',
+                    marker: {
+                        color: '#3b82f6',
+                        line: { color: '#1e40af', width: 1.5 }
+                    },
+                    text: trainSamples.map(s => `${s} samples`),
+                    textposition: 'auto'
+                };
+                
+                console.log('[DEBUG] Data distribution:', trainSamples);
+                Plotly.react('dataDistChart', [dataDistTrace], dataDistLayout);
+            }
+        }
+        
+        function updatePeers(metrics) {
+            console.log('[DEBUG] updatePeers called');
+            const peerMetrics = metrics.peer_metrics;
+            if (!peerMetrics || Object.keys(peerMetrics).length === 0) {
+                console.log('[DEBUG] No peer metrics data');
+                return;
+            }
+            
+            const grid = document.getElementById('peersGrid');
+            grid.innerHTML = '';
+            
+            let hasData = false;
+            Object.keys(peerMetrics).forEach(peerId => {
+                const pm = peerMetrics[peerId];
+                const latest = pm.train_loss.length - 1;
+                
+                console.log(`[DEBUG] Rendering peer ${peerId}, latest index: ${latest}`);
+                
+                // Skip if no data yet
+                if (latest < 0) {
+                    console.log(`[DEBUG] Skipping peer ${peerId} - no data yet`);
+                    return;
+                }
+                
+                hasData = true;
+                
+                const card = document.createElement('div');
+                card.className = 'peer-card';
+                card.innerHTML = `
+                    <div class="peer-header">Peer ${peerId}</div>
+                    <div class="peer-info">
+                        <div class="peer-row">
+                            <span class="peer-label">Status</span>
+                            <span class="peer-value" style="color: ${pm.enabled[latest] ? '#10b981' : '#ef4444'}">
+                                ${pm.enabled[latest] ? 'Active' : 'Disabled'}
+                            </span>
+                        </div>
+                        <div class="peer-row">
+                            <span class="peer-label">Train Loss</span>
+                            <span class="peer-value">${pm.train_loss[latest].toFixed(4)}</span>
+                        </div>
+                        <div class="peer-row">
+                            <span class="peer-label">Eval Loss</span>
+                            <span class="peer-value">${pm.eval_loss[latest].toFixed(4)}</span>
+                        </div>
+                        <div class="peer-row">
+                            <span class="peer-label">MSE</span>
+                            <span class="peer-value">${pm.eval_mse[latest].toFixed(4)}</span>
+                        </div>
+                        <div class="peer-row">
+                            <span class="peer-label">Sent</span>
+                            <span class="peer-value">${(pm.sent_bytes[latest] / 1024).toFixed(2)} KB</span>
+                        </div>
+                        <div class="peer-row">
+                            <span class="peer-label">Received</span>
+                            <span class="peer-value">${(pm.recv_bytes[latest] / 1024).toFixed(2)} KB</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn-secondary" onclick="togglePeer(${peerId}, ${pm.enabled[latest] ? false : true})" style="padding: 6px 12px; font-size: 0.85em; flex: 1;">
+                            ${pm.enabled[latest] ? 'Disable' : 'Enable'}
+                        </button>
+                        <button class="btn-secondary" onclick="changePeerAggregation(${peerId})" style="padding: 6px 12px; font-size: 0.85em; flex: 1;">
+                            Aggregation
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            // Show message if no data yet
+            if (!hasData) {
+                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;">No training data yet. Click "Run 1 Round" to start training.</div>';
+            }
+        }
+        
+        window.changePeerAggregation = async function(peerId) {
+            const method = prompt('Select aggregation method for Peer ' + peerId + ':\n' + '1. FedAvg\n' + '2. FedProx\n\n' + 'Enter 1 or 2:', '1');
+            if (method === '1' || method === '2') {
+                try {
+                    const aggMethod = method === '1' ? 'FedAvg' : 'FedProx';
+                    const mu = aggMethod === 'FedProx' ? parseFloat(prompt('Enter mu value for FedProx (default 0.01):', '0.01')) : 0.01;
+                    
+                    await fetch(`${API_BASE}/set_aggregate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            peer_id: peerId,
+                            aggregate_method: aggMethod,
+                            mu: mu
+                        })
+                    });
+                    showMessage(`✓ Updated aggregation method for Peer ${peerId} to ${aggMethod.toUpperCase()}`, 'success');
+                } catch (error) {
+                    showMessage('✗ Failed to update aggregation: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = type;
+            msgDiv.textContent = text;
+            setTimeout(() => msgDiv.textContent = '', 5000);
+        }
+        
+        // Check API health on load
+        updateApiEndpointDisplay();
+        fetch(`${API_BASE}/health`)
+            .then(r => r.json())
+            .then(data => showMessage('✓ Connected to API server', 'success'))
+            .catch(() => showMessage('✗ API server not running. Please start: python api.py', 'error'));
+    </script>
+</body>
+</html>
