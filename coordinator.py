@@ -9,7 +9,7 @@ import numpy as np
 
 from dfl_peer import DFLPeer
 from peer_worker import PeerWorker
-from topology import RingTopology
+from topology import RingTopology, create_topology, BaseTopology
 from messages import ControlMessage, StatusMessage, create_control_message
 from data_utils import BearingDatasetLoader, create_data_loaders
 
@@ -27,7 +27,7 @@ class Coordinator:
         """Initialize coordinator"""
         self.peers: List[DFLPeer] = []
         self.workers: List[PeerWorker] = []
-        self.topology: Optional[RingTopology] = None
+        self.topology: Optional[BaseTopology] = None
         
         # Message queues
         self.control_queues: Dict[int, queue.Queue] = {}
@@ -60,12 +60,13 @@ class Coordinator:
                   device: str = "cpu", latency_ms: float = 0.0,
                   drop_prob: float = 0.0, aggregate_method: str = "avg",
                   mu: float = 0.01, dataset: str = "bearing", csv_path: str = None,
-                  peer_data_fractions: List[float] = None):
+                  peer_data_fractions: List[float] = None,
+                  topology_type: str = "ring", topology_params: Dict = None):
         """Initialize the DFL system
         
         Args:
             num_peers: Number of peers
-            hops: List of hop distances for ring topology
+            hops: List of hop distances for ring topology (deprecated, use topology_params)
             data_distribution: Data distribution type ('iid', 'non_iid', 'label_skew')
             local_epochs: Local training epochs per round
             learning_rate: Learning rate
@@ -78,16 +79,30 @@ class Coordinator:
             dataset: Dataset to use ('bearing')
             csv_path: Path to CSV file (for bearing dataset, optional)
             peer_data_fractions: List of fractions (0-1) for each peer's data amount (optional)
+            topology_type: Type of topology ('ring', 'line', 'mesh', 'star', 'full')
+            topology_params: Dict of topology-specific parameters
+                Ring: {'hops': [1, 2]}
+                Line: {'bidirectional': True}
+                Mesh: {'connectivity': 0.5} or {'edges': [(0,1), (1,2)]}
+                Star: {'center_peer': 0}
         """
         if self.initialized:
             raise RuntimeError("Coordinator already initialized. Call reset() first.")
         
         self._log(f"Initializing {num_peers} peers with {data_distribution} data distribution on {dataset} dataset")
         
+        # Handle backward compatibility for hops parameter
+        if topology_params is None:
+            topology_params = {}
+        if hops is not None and topology_type == "ring" and 'hops' not in topology_params:
+            topology_params['hops'] = hops
+        
         # Save configuration
         self.config = {
             'num_peers': num_peers,
-            'hops': hops or [1],
+            'hops': hops or [1],  # Keep for backward compatibility
+            'topology_type': topology_type,
+            'topology_params': topology_params,
             'data_distribution': data_distribution,
             'local_epochs': local_epochs,
             'learning_rate': learning_rate,
@@ -102,7 +117,8 @@ class Coordinator:
         }
         
         # Create topology
-        self.topology = RingTopology(num_peers, set(hops or [1]))
+        self.topology = create_topology(topology_type, num_peers, **topology_params)
+        self._log(f"Created {topology_type} topology: {self.topology.get_topology_info()}")
         
         # Load and distribute data
         if dataset.lower() == "bearing":

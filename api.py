@@ -53,7 +53,7 @@ coordinator = Coordinator()
 # Request/Response Models
 class InitRequest(BaseModel):
     num_peers: int = Field(default=DEFAULT_NUM_PEERS, ge=2, le=100)
-    hops: List[int] = Field(default=[1])
+    hops: List[int] = Field(default=[1])  # Deprecated, use topology_params
     data_distribution: str = Field(default=DISTRIBUTION_IID)
     local_epochs: int = Field(default=DEFAULT_LOCAL_EPOCHS, ge=1)
     learning_rate: float = Field(default=DEFAULT_LEARNING_RATE, gt=0)
@@ -66,6 +66,8 @@ class InitRequest(BaseModel):
     dataset: str = Field(default="bearing")  # Currently only "bearing" supported
     csv_path: Optional[str] = Field(default=None)  # Path to CSV file (optional)
     peer_data_fractions: Optional[List[float]] = Field(default=None)  # Data fraction per peer (optional)
+    topology_type: str = Field(default="ring")  # ring, line, mesh, star, full
+    topology_params: Optional[Dict[str, Any]] = Field(default=None)  # Topology-specific parameters
 
 
 class StartRequest(BaseModel):
@@ -135,17 +137,25 @@ async def initialize_system(request: InitRequest):
     """Initialize the DFL system with specified configuration
     
     Creates topology, peers, and message queues (threads not started yet)
+    
+    Supports various topologies:
+    - ring: hops-based ring network
+    - line: linear chain topology
+    - mesh: arbitrary connections
+    - star: central hub topology
+    - full: fully connected network
     """
     try:
-        logger.info(f"[API] Initialize request: num_peers={request.num_peers}, hops={request.hops}, "
-                   f"distribution={request.data_distribution}, peer_data_fractions={request.peer_data_fractions}")
+        logger.info(f"[API] Initialize request: num_peers={request.num_peers}, "
+                   f"topology_type={request.topology_type}, topology_params={request.topology_params}, "
+                   f"distribution={request.data_distribution}")
         
         if coordinator.initialized:
             raise HTTPException(status_code=400, detail="System already initialized. Call /api/reset first.")
         
         coordinator.initialize(
             num_peers=request.num_peers,
-            hops=request.hops,
+            hops=request.hops,  # Backward compatibility
             data_distribution=request.data_distribution,
             local_epochs=request.local_epochs,
             learning_rate=request.learning_rate,
@@ -157,14 +167,20 @@ async def initialize_system(request: InitRequest):
             mu=request.mu,
             dataset=request.dataset,
             csv_path=request.csv_path,
-            peer_data_fractions=request.peer_data_fractions
+            peer_data_fractions=request.peer_data_fractions,
+            topology_type=request.topology_type,
+            topology_params=request.topology_params or {}
         )
         
-        logger.info(f"[API] System initialized successfully with {request.num_peers} peers")
+        logger.info(f"[API] System initialized successfully with {request.num_peers} peers "
+                   f"using {request.topology_type} topology")
         return StatusResponse(
             success=True,
-            message=f"Initialized {request.num_peers} peers successfully",
-            data={"config": coordinator.config}
+            message=f"Initialized {request.num_peers} peers with {request.topology_type} topology",
+            data={
+                "config": coordinator.config,
+                "topology_info": coordinator.topology.get_topology_info()
+            }
         )
     
     except Exception as e:
@@ -445,17 +461,37 @@ async def reset_system():
 
 @app.get("/api/topology", response_model=StatusResponse)
 async def get_topology():
-    """Get current topology information"""
+    """Get current topology information with peer metrics"""
     try:
         if not coordinator.initialized or not coordinator.topology:
             raise HTTPException(status_code=400, detail="System not initialized")
         
         topology_info = coordinator.topology.get_topology_info()
         
+        # Build topology dict (peer_id -> neighbors)
+        topology = {}
+        for peer_id in range(coordinator.topology.num_peers):
+            topology[peer_id] = coordinator.topology.get_neighbors(peer_id)
+        
+        # Get peer metrics if available
+        peer_metrics = {}
+        if coordinator.peer_history:
+            for peer_id, history in coordinator.peer_history.items():
+                peer_metrics[peer_id] = {
+                    'train_loss': history['train_loss'][-1] if history['train_loss'] else None,
+                    'eval_loss': history['eval_loss'][-1] if history['eval_loss'] else None,
+                    'eval_mse': history['eval_mse'][-1] if history['eval_mse'] else None,
+                    'enabled': history['enabled'][-1] if history['enabled'] else True
+                }
+        
         return StatusResponse(
             success=True,
             message="Topology information retrieved",
-            data=topology_info
+            data={
+                'topology': topology,
+                'topology_info': topology_info,
+                'peer_metrics': peer_metrics
+            }
         )
     
     except Exception as e:

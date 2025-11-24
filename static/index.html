@@ -312,7 +312,6 @@
             </div>
             <button class="btn-warning" onclick="resetSystem()" id="resetBtn" disabled>🔄 Reset</button>
             <button class="btn-secondary" onclick="toggleAutoRefresh()">Auto: <span id="autoStatus">OFF</span></button>
-            <button class="btn-secondary" onclick="showTopologyModal()" id="topologyBtn" disabled>🔗 Topology</button>
         </div>
         
         <div class="status-bar">
@@ -362,8 +361,8 @@
             </div>
         </div>
         
-        <h2 style="margin-bottom: 20px; text-align: center;">Peer Details</h2>
-        <div class="peers-grid" id="peersGrid">
+        <h2 style="margin-bottom: 20px; text-align: center;">Network Topology</h2>
+        <div id="peersGrid" style="margin-top: 20px;">
             <div class="loading">No peers initialized</div>
         </div>
         
@@ -391,8 +390,34 @@
                         </div>
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Topology Hops (comma separated):</label>
-                        <input type="text" id="hops" value="1" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Network Topology:</label>
+                        <select id="topologyType" onchange="updateTopologyParams()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                            <option value="ring">Ring (Circular)</option>
+                            <option value="line">Line (Chain)</option>
+                            <option value="mesh">Mesh (Custom)</option>
+                            <option value="full">Fully Connected</option>
+                        </select>
+                    </div>
+                    <div id="topologyParamsContainer">
+                        <div id="ringParams" style="display: block;">
+                            <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Ring Hops (comma separated):</label>
+                            <input type="text" id="hops" value="1" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                            <div style="font-size: 0.85em; opacity: 0.6; margin-top: 5px;">Example: 1 (neighbors), 1,2 (1 and 2-hop)</div>
+                        </div>
+                        <div id="lineParams" style="display: none;">
+                            <label style="display: block; margin-bottom: 5px; opacity: 0.8;">
+                                <input type="checkbox" id="lineBidirectional" checked> Bidirectional
+                            </label>
+                            <div style="font-size: 0.85em; opacity: 0.6; margin-top: 5px;">Peers connected in a linear chain</div>
+                        </div>
+                        <div id="meshParams" style="display: none;">
+                            <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Connectivity (0.0 - 1.0):</label>
+                            <input type="number" id="meshConnectivity" value="0.5" min="0" max="1" step="0.1" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
+                            <div style="font-size: 0.85em; opacity: 0.6; margin-top: 5px;">Random connectivity probability</div>
+                        </div>
+                        <div id="fullParams" style="display: none;">
+                            <div style="font-size: 0.85em; opacity: 0.6;">All peers connect to each other</div>
+                        </div>
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Data Distribution:</label>
@@ -433,17 +458,6 @@
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button class="btn-primary" onclick="initSystem()" style="flex: 1;">Initialize</button>
                     <button class="btn-secondary" onclick="closeConfigModal()" style="flex: 1;">Cancel</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Topology Modal -->
-        <div id="topologyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto;">
-            <div style="background: #1e293b; margin: 50px auto; max-width: 800px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-                <h2 style="margin-bottom: 20px;">Network Topology</h2>
-                <div id="topologyContent"></div>
-                <div style="margin-top: 20px;">
-                    <button class="btn-secondary" onclick="closeTopologyModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -646,52 +660,369 @@
             document.getElementById('configModal').style.display = 'none';
         };
         
-        window.showTopologyModal = function() {
-            document.getElementById('topologyModal').style.display = 'block';
-            loadTopology();
-        };
-        
-        window.closeTopologyModal = function() {
-            document.getElementById('topologyModal').style.display = 'none';
-        };
-        
         window.closeLogsModal = function() {
             document.getElementById('logsModal').style.display = 'none';
+        };
+        
+        // Topology configuration helper
+        window.updateTopologyParams = function() {
+            const topologyType = document.getElementById('topologyType').value;
+            
+            // Hide all params
+            document.getElementById('ringParams').style.display = 'none';
+            document.getElementById('lineParams').style.display = 'none';
+            document.getElementById('meshParams').style.display = 'none';
+            document.getElementById('fullParams').style.display = 'none';
+            
+            // Show relevant params
+            if (topologyType === 'ring') {
+                document.getElementById('ringParams').style.display = 'block';
+            } else if (topologyType === 'line') {
+                document.getElementById('lineParams').style.display = 'block';
+            } else if (topologyType === 'mesh') {
+                document.getElementById('meshParams').style.display = 'block';
+            } else if (topologyType === 'full') {
+                document.getElementById('fullParams').style.display = 'block';
+            }
         };
         
         async function loadTopology() {
             try {
                 const response = await fetch(`${API_BASE}/topology`);
                 const data = await response.json();
-                const content = document.getElementById('topologyContent');
+                const content = document.getElementById('peersGrid');
                 
                 if (data.success && data.data) {
-                    const topology = data.data.topology;
-                    let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
-                    
-                    Object.keys(topology).forEach(peerId => {
-                        const neighbors = topology[peerId];
-                        html += `
-                            <div style="background: #0f172a; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                                <div style="font-weight: 600; margin-bottom: 10px; font-size: 1.1em;">Peer ${peerId}</div>
-                                <div style="opacity: 0.8;">Neighbors: ${neighbors.join(', ') || 'None'}</div>
-                                <div style="margin-top: 10px;">
-                                    <button class="btn-secondary" onclick="editPeerNeighbors(${peerId}, [${neighbors}])" style="padding: 6px 12px; font-size: 0.9em;">Edit Neighbors</button>
-                                    <button class="btn-warning" onclick="togglePeer(${peerId}, true)" style="padding: 6px 12px; font-size: 0.9em;">Enable</button>
-                                    <button class="btn-danger" onclick="togglePeer(${peerId}, false)" style="padding: 6px 12px; font-size: 0.9em;">Disable</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    
-                    html += '</div>';
-                    content.innerHTML = html;
+                    // Render topology visualization map
+                    renderTopologyMap(data.data);
                 } else {
                     content.innerHTML = '<div class="error">Failed to load topology</div>';
                 }
             } catch (error) {
-                document.getElementById('topologyContent').innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+                document.getElementById('peersGrid').innerHTML = '<div class="error">Error: ' + error.message + '</div>';
             }
+        }
+        
+        function renderTopologyMap(data) {
+            const content = document.getElementById('peersGrid');
+            const topology = data.topology;
+            const topologyInfo = data.topology_info || {};
+            const peerMetrics = data.peer_metrics || {};
+            
+            // Create SVG canvas with larger size
+            const width = 1400;
+            const height = 900;
+            const numPeers = Object.keys(topology).length;
+            
+            // Calculate peer positions based on topology type
+            const positions = calculatePeerPositions(numPeers, topologyInfo.type, width, height);
+            
+            let html = `
+                <div style="background: #0f172a; padding: 20px; border-radius: 8px; max-width: 100%;">
+                    <div style="font-size: 1.4em; margin-bottom: 15px; font-weight: 600; text-align: center;">
+                        <span style="color: #a78bfa;">Network Topology:</span> ${topologyInfo.type || 'Unknown'}
+                        <div style="opacity: 0.7; font-size: 0.75em; margin-top: 5px;">
+                            ${numPeers} peers • ${topologyInfo.total_edges || 0} connections
+                        </div>
+                    </div>
+                    
+                    <!-- Zoom Controls -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 15px; padding: 12px; background: #1e293b; border-radius: 8px;">
+                        <button onclick="topologyZoom('out')" class="btn-secondary" style="padding: 8px 18px; font-size: 0.95em;">
+                            🔍− Zoom Out
+                        </button>
+                        <button onclick="topologyZoom('reset')" class="btn-warning" style="padding: 8px 18px; font-size: 0.95em; background: #f59e0b;">
+                            ↻ Reset View
+                        </button>
+                        <button onclick="topologyZoom('in')" class="btn-secondary" style="padding: 8px 18px; font-size: 0.95em;">
+                            🔍+ Zoom In
+                        </button>
+                        <div style="opacity: 0.8; font-size: 0.9em; margin-left: 20px; color: #94a3b8;">
+                            💡 <strong>Tip:</strong> Click & drag to pan • Scroll to zoom
+                        </div>
+                    </div>
+                    
+                    <div id="svgContainer" style="overflow: auto; border: 2px solid #334155; border-radius: 12px; background: #1e293b; cursor: grab; max-width: 100%; max-height: 750px;">
+                        <svg id="topologySvg" width="${width}" height="${height}" style="display: block;">
+                            <g id="topologyGroup">
+            `;
+            
+            // Draw edges first (so they appear behind nodes)
+            Object.keys(topology).forEach(peerId => {
+                const neighbors = topology[peerId];
+                const fromPos = positions[peerId];
+                
+                neighbors.forEach(neighborId => {
+                    const toPos = positions[neighborId];
+                    html += `<line x1="${fromPos.x}" y1="${fromPos.y}" x2="${toPos.x}" y2="${toPos.y}" 
+                            stroke="#475569" stroke-width="2.5" opacity="0.6" 
+                            stroke-dasharray="5,3" />`;
+                });
+            });
+            
+            // Draw nodes with detailed information
+            Object.keys(topology).forEach(peerId => {
+                const pos = positions[peerId];
+                const metrics = peerMetrics[peerId] || {};
+                const neighbors = topology[peerId];
+                const isEnabled = metrics.enabled !== false;
+                
+                // Node styling
+                const nodeColor = isEnabled ? '#10b981' : '#ef4444';
+                const nodeStroke = isEnabled ? '#34d399' : '#f87171';
+                const nodeSize = 35;
+                
+                // Glow effect for active nodes
+                if (isEnabled) {
+                    html += `<circle cx="${pos.x}" cy="${pos.y}" r="${nodeSize + 5}" 
+                            fill="${nodeColor}" opacity="0.2" />`;
+                }
+                
+                // Main node circle
+                html += `<circle cx="${pos.x}" cy="${pos.y}" r="${nodeSize}" 
+                        fill="${nodeColor}" stroke="${nodeStroke}" stroke-width="3" 
+                        opacity="${isEnabled ? 1 : 0.6}" 
+                        style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));" />`;
+                
+                // Peer ID label (inside circle)
+                html += `<text x="${pos.x}" y="${pos.y + 6}" text-anchor="middle" 
+                        fill="#ffffff" font-size="16" font-weight="bold">P${peerId}</text>`;
+                
+                // Status indicator
+                const statusText = isEnabled ? '●' : '○';
+                const statusColor = isEnabled ? '#34d399' : '#f87171';
+                html += `<text x="${pos.x + nodeSize - 8}" y="${pos.y - nodeSize + 12}" 
+                        fill="${statusColor}" font-size="20">${statusText}</text>`;
+                
+                // Information panel next to node
+                const panelX = pos.x + nodeSize + 15;
+                const panelY = pos.y - 50;
+                const panelWidth = 180;
+                const panelHeight = metrics.train_loss !== undefined ? 110 : 60;
+                
+                // Background panel
+                html += `<rect x="${panelX}" y="${panelY}" width="${panelWidth}" height="${panelHeight}" 
+                        rx="8" fill="#0f172a" stroke="#334155" stroke-width="2" opacity="0.95" />`;
+                
+                // Peer info text
+                let textY = panelY + 20;
+                
+                // Status
+                html += `<text x="${panelX + 10}" y="${textY}" fill="${statusColor}" 
+                        font-size="12" font-weight="600">
+                        ${isEnabled ? '✓ ACTIVE' : '✗ DISABLED'}
+                    </text>`;
+                textY += 18;
+                
+                // Neighbors
+                const neighborText = neighbors.length > 0 ? neighbors.join(', ') : 'None';
+                html += `<text x="${panelX + 10}" y="${textY}" fill="#94a3b8" font-size="11">
+                        Neighbors: ${neighborText.length > 15 ? neighborText.substring(0, 15) + '...' : neighborText}
+                    </text>`;
+                textY += 18;
+                
+                // Metrics (if available)
+                if (metrics.train_loss !== undefined) {
+                    html += `<text x="${panelX + 10}" y="${textY}" fill="#a78bfa" font-size="11" font-weight="600">
+                            Loss: ${metrics.train_loss.toFixed(4)}
+                        </text>`;
+                    textY += 16;
+                    
+                    html += `<text x="${panelX + 10}" y="${textY}" fill="#60a5fa" font-size="11" font-weight="600">
+                            MSE: ${(metrics.eval_mse || 0).toFixed(4)}
+                        </text>`;
+                    textY += 16;
+                }
+                
+                // Action buttons (small clickable areas)
+                const buttonY = panelY + panelHeight + 10;
+                
+                // Edit button
+                html += `<g onclick="editPeerNeighbors(${peerId}, [${neighbors}])" style="cursor: pointer;">
+                        <rect x="${panelX}" y="${buttonY}" width="55" height="22" rx="4" 
+                              fill="#3b82f6" opacity="0.8" />
+                        <text x="${panelX + 27.5}" y="${buttonY + 15}" text-anchor="middle" 
+                              fill="#ffffff" font-size="10" font-weight="600">EDIT</text>
+                    </g>`;
+                
+                // Toggle button
+                const toggleText = isEnabled ? 'OFF' : 'ON';
+                const toggleColor = isEnabled ? '#ef4444' : '#10b981';
+                html += `<g onclick="togglePeer(${peerId}, ${!isEnabled})" style="cursor: pointer;">
+                        <rect x="${panelX + 60}" y="${buttonY}" width="55" height="22" rx="4" 
+                              fill="${toggleColor}" opacity="0.8" />
+                        <text x="${panelX + 87.5}" y="${buttonY + 15}" text-anchor="middle" 
+                              fill="#ffffff" font-size="10" font-weight="600">${toggleText}</text>
+                    </g>`;
+            });
+            
+            html += `
+                            </g>
+                        </svg>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div style="display: flex; justify-content: center; gap: 30px; margin-top: 20px; padding: 15px; background: #1e293b; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 20px; height: 20px; border-radius: 50%; background: #10b981;"></div>
+                            <span style="font-size: 0.9em; opacity: 0.9;">Active Peer</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 20px; height: 20px; border-radius: 50%; background: #ef4444;"></div>
+                            <span style="font-size: 0.9em; opacity: 0.9;">Disabled Peer</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 30px; height: 2px; background: #475569;"></div>
+                            <span style="font-size: 0.9em; opacity: 0.9;">Connection</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            
+            // Add pan and zoom functionality
+            setTimeout(() => {
+                const svg = document.getElementById('topologySvg');
+                const container = document.getElementById('svgContainer');
+                const group = document.getElementById('topologyGroup');
+                
+                if (!svg || !container || !group) return;
+                
+                let scale = 1;
+                let translateX = 0;
+                let translateY = 0;
+                let isDragging = false;
+                let startX, startY;
+                
+                // Apply transform
+                function updateTransform() {
+                    group.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
+                }
+                
+                // Global function for zoom buttons
+                window.topologyZoom = function(action) {
+                    if (action === 'in') {
+                        scale = Math.min(3, scale * 1.2);
+                    } else if (action === 'out') {
+                        scale = Math.max(0.3, scale / 1.2);
+                    } else if (action === 'reset') {
+                        scale = 1;
+                        translateX = 0;
+                        translateY = 0;
+                    }
+                    updateTransform();
+                };
+                
+                // Mouse wheel zoom
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    const rect = container.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+                    
+                    // Zoom toward mouse position
+                    const oldScale = scale;
+                    scale = Math.max(0.3, Math.min(3, scale * delta));
+                    
+                    translateX = mouseX - (mouseX - translateX) * (scale / oldScale);
+                    translateY = mouseY - (mouseY - translateY) * (scale / oldScale);
+                    
+                    updateTransform();
+                });
+                
+                // Pan with mouse drag
+                container.addEventListener('mousedown', (e) => {
+                    if (e.target.tagName !== 'circle' && e.target.tagName !== 'rect' && e.target.tagName !== 'text' && e.target.tagName !== 'g') {
+                        isDragging = true;
+                        startX = e.clientX - translateX;
+                        startY = e.clientY - translateY;
+                        container.style.cursor = 'grabbing';
+                    }
+                });
+                
+                container.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        translateX = e.clientX - startX;
+                        translateY = e.clientY - startY;
+                        updateTransform();
+                    }
+                });
+                
+                container.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    container.style.cursor = 'grab';
+                });
+                
+                container.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    container.style.cursor = 'grab';
+                });
+                
+                // Double-click to reset
+                container.addEventListener('dblclick', (e) => {
+                    if (e.target === container || e.target === svg) {
+                        scale = 1;
+                        translateX = 0;
+                        translateY = 0;
+                        updateTransform();
+                    }
+                });
+            }, 100);
+        }
+        
+        function calculatePeerPositions(numPeers, topologyType, width, height) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.32;
+            const positions = {};
+            
+            if (topologyType === 'ring' || topologyType === 'full' || !topologyType) {
+                // Circular layout
+                for (let i = 0; i < numPeers; i++) {
+                    const angle = (2 * Math.PI * i) / numPeers - Math.PI / 2;
+                    positions[i] = {
+                        x: centerX + radius * Math.cos(angle),
+                        y: centerY + radius * Math.sin(angle)
+                    };
+                }
+            } else if (topologyType === 'line') {
+                // Linear layout (horizontal)
+                const spacing = (width - 200) / (numPeers - 1 || 1);
+                for (let i = 0; i < numPeers; i++) {
+                    positions[i] = {
+                        x: 100 + i * spacing,
+                        y: centerY
+                    };
+                }
+            } else if (topologyType === 'mesh') {
+                // Grid layout for mesh
+                const cols = Math.ceil(Math.sqrt(numPeers));
+                const rows = Math.ceil(numPeers / cols);
+                const spacingX = (width - 200) / (cols || 1);
+                const spacingY = (height - 200) / (rows || 1);
+                
+                for (let i = 0; i < numPeers; i++) {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    positions[i] = {
+                        x: 100 + col * spacingX,
+                        y: 100 + row * spacingY
+                    };
+                }
+            } else {
+                // Default circular
+                for (let i = 0; i < numPeers; i++) {
+                    const angle = (2 * Math.PI * i) / numPeers - Math.PI / 2;
+                    positions[i] = {
+                        x: centerX + radius * Math.cos(angle),
+                        y: centerY + radius * Math.sin(angle)
+                    };
+                }
+            }
+            
+            return positions;
         }
         
         async function loadLogs() {
@@ -757,11 +1088,22 @@
                 closeConfigModal();
                 showMessage('Initializing system...', 'info');
                 
-                const hopsStr = document.getElementById('hops').value;
-                const hops = hopsStr.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h));
-                
                 const numPeers = parseInt(document.getElementById('numPeers').value);
-                console.log('[DEBUG] numPeers:', numPeers, 'hops:', hops);
+                const topologyType = document.getElementById('topologyType').value;
+                
+                // Build topology params based on type
+                let topologyParams = {};
+                if (topologyType === 'ring') {
+                    const hopsStr = document.getElementById('hops').value;
+                    const hops = hopsStr.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h));
+                    topologyParams.hops = hops;
+                } else if (topologyType === 'line') {
+                    topologyParams.bidirectional = document.getElementById('lineBidirectional').checked;
+                } else if (topologyType === 'mesh') {
+                    topologyParams.connectivity = parseFloat(document.getElementById('meshConnectivity').value);
+                }
+                
+                console.log('[DEBUG] numPeers:', numPeers, 'topology:', topologyType, 'params:', topologyParams);
                 
                 // Get peer data fractions if enabled
                 let peerDataFractions = null;
@@ -783,7 +1125,9 @@
                 
                 const requestBody = {
                     num_peers: numPeers,
-                    hops: hops,
+                    topology_type: topologyType,
+                    topology_params: topologyParams,
+                    hops: topologyType === 'ring' ? topologyParams.hops : [1], // backward compatibility
                     data_distribution: document.getElementById('dataDistribution').value,
                     local_epochs: parseInt(document.getElementById('localEpochs').value),
                     learning_rate: parseFloat(document.getElementById('learningRate').value),
@@ -814,7 +1158,6 @@
                 document.getElementById('stepBtn').disabled = false;
                 document.getElementById('runNBtn').disabled = false;
                 document.getElementById('resetBtn').disabled = false;
-                document.getElementById('topologyBtn').disabled = false;
                 await updateDashboard();
             } catch (error) {
                 showMessage('✗ Failed to initialize: ' + error.message, 'error');
@@ -920,7 +1263,6 @@
                 document.getElementById('startBtn').disabled = true;
                 document.getElementById('stepBtn').disabled = true;
                 document.getElementById('resetBtn').disabled = true;
-                document.getElementById('topologyBtn').disabled = true;
                 Plotly.newPlot('lossChart', [], lossLayout);
                 Plotly.newPlot('mseChart', [], mseLayout);
                 Plotly.newPlot('peerLossChart', [], peerLossLayout);
@@ -1090,79 +1432,16 @@
         }
         
         function updatePeers(metrics) {
-            console.log('[DEBUG] updatePeers called');
+            console.log('[DEBUG] updatePeers called - loading topology visualization');
             const peerMetrics = metrics.peer_metrics;
             if (!peerMetrics || Object.keys(peerMetrics).length === 0) {
                 console.log('[DEBUG] No peer metrics data');
+                document.getElementById('peersGrid').innerHTML = '<div class="loading">No peers initialized</div>';
                 return;
             }
             
-            const grid = document.getElementById('peersGrid');
-            grid.innerHTML = '';
-            
-            let hasData = false;
-            Object.keys(peerMetrics).forEach(peerId => {
-                const pm = peerMetrics[peerId];
-                const latest = pm.train_loss.length - 1;
-                
-                console.log(`[DEBUG] Rendering peer ${peerId}, latest index: ${latest}`);
-                
-                // Skip if no data yet
-                if (latest < 0) {
-                    console.log(`[DEBUG] Skipping peer ${peerId} - no data yet`);
-                    return;
-                }
-                
-                hasData = true;
-                
-                const card = document.createElement('div');
-                card.className = 'peer-card';
-                card.innerHTML = `
-                    <div class="peer-header">Peer ${peerId}</div>
-                    <div class="peer-info">
-                        <div class="peer-row">
-                            <span class="peer-label">Status</span>
-                            <span class="peer-value" style="color: ${pm.enabled[latest] ? '#10b981' : '#ef4444'}">
-                                ${pm.enabled[latest] ? 'Active' : 'Disabled'}
-                            </span>
-                        </div>
-                        <div class="peer-row">
-                            <span class="peer-label">Train Loss</span>
-                            <span class="peer-value">${pm.train_loss[latest].toFixed(4)}</span>
-                        </div>
-                        <div class="peer-row">
-                            <span class="peer-label">Eval Loss</span>
-                            <span class="peer-value">${pm.eval_loss[latest].toFixed(4)}</span>
-                        </div>
-                        <div class="peer-row">
-                            <span class="peer-label">MSE</span>
-                            <span class="peer-value">${pm.eval_mse[latest].toFixed(4)}</span>
-                        </div>
-                        <div class="peer-row">
-                            <span class="peer-label">Sent</span>
-                            <span class="peer-value">${(pm.sent_bytes[latest] / 1024).toFixed(2)} KB</span>
-                        </div>
-                        <div class="peer-row">
-                            <span class="peer-label">Received</span>
-                            <span class="peer-value">${(pm.recv_bytes[latest] / 1024).toFixed(2)} KB</span>
-                        </div>
-                    </div>
-                    <div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn-secondary" onclick="togglePeer(${peerId}, ${pm.enabled[latest] ? false : true})" style="padding: 6px 12px; font-size: 0.85em; flex: 1;">
-                            ${pm.enabled[latest] ? 'Disable' : 'Enable'}
-                        </button>
-                        <button class="btn-secondary" onclick="changePeerAggregation(${peerId})" style="padding: 6px 12px; font-size: 0.85em; flex: 1;">
-                            Aggregation
-                        </button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-            
-            // Show message if no data yet
-            if (!hasData) {
-                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;">No training data yet. Click "Run 1 Round" to start training.</div>';
-            }
+            // Load topology visualization instead of peer cards
+            loadTopology();
         }
         
         window.changePeerAggregation = async function(peerId) {

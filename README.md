@@ -3,12 +3,14 @@
 A comprehensive tool for simulating and visualizing Decentralized Federated Learning (DFL) with configurable network topologies, aggregation methods, and fault tolerance features.
 
 **✨ NEW: Bearing Fault Detection Dataset Support!** - See [QUICKSTART_BEARING.md](QUICKSTART_BEARING.md) for quick start guide.
+**✨ NEW: Multiple Topology Support!** - Ring, Line, Mesh, and Fully Connected - See [TOPOLOGY_GUIDE.md](TOPOLOGY_GUIDE.md) for details.
 
 ## 🌟 Features
 
 ### Core Capabilities
 - **Multiple Datasets**: Bearing fault detection (CSV) and MNIST (images)
-- **Decentralized Architecture**: Ring, star, and fully-connected topologies
+- **Multiple Topologies**: Ring, Line, Mesh, and Fully Connected networks
+- **Decentralized Architecture**: Flexible peer-to-peer communication patterns
 - **Multiple Aggregation Methods**: FedAvg and FedProx with configurable parameters
 - **Fault Tolerance**: Simulate node failures, network latency, and message drops
 - **Real-time Monitoring**: Track training metrics, bandwidth usage, and system status
@@ -17,6 +19,7 @@ A comprehensive tool for simulating and visualizing Decentralized Federated Lear
 
 ### Advanced Features
 - **Dynamic Topology**: Change network connections during runtime
+- **Custom Mesh Networks**: Define arbitrary peer connections
 - **Data Distribution**: IID, Non-IID, and label-skewed data distributions
 - **Bandwidth Tracking**: Per-round and cumulative bandwidth statistics
 - **Cold Start Support**: Rejoin nodes with model fetching from neighbors
@@ -40,9 +43,55 @@ A comprehensive tool for simulating and visualizing Decentralized Federated Lear
 1. **DFLPeer**: Core logic for local training, evaluation, and model aggregation
 2. **PeerWorker**: Thread wrapper handling message processing and coordination
 3. **Coordinator**: Orchestrates training rounds, collects metrics, manages bandwidth
-4. **Topology**: Manages network structure (Ring, Star, Fully Connected)
+4. **Topology**: Manages network structure with support for:
+   - **Ring**: Circular connections with configurable hops
+   - **Line**: Linear chain topology
+   - **Mesh**: Custom or random peer connections
+   - **Star**: Central hub architecture
+   - **Fully Connected**: Complete graph (all-to-all)
 5. **Messages**: Protocol for MODEL, CONTROL, and STATUS messages
 6. **API**: RESTful interface for system control and monitoring
+
+## 🔗 Network Topologies
+
+The DFL Tool supports multiple network topologies. See [TOPOLOGY_GUIDE.md](TOPOLOGY_GUIDE.md) for detailed documentation.
+
+### Quick Topology Examples
+
+**Ring Topology (1-hop neighbors)**:
+```python
+coordinator.initialize(
+    num_peers=6,
+    topology_type="ring",
+    topology_params={'hops': [1]}
+)
+```
+
+**Mesh Topology (custom edges)**:
+```python
+coordinator.initialize(
+    num_peers=5,
+    topology_type="mesh",
+    topology_params={'edges': [(0,1), (1,2), (2,3), (3,4)]}
+)
+```
+
+**Line Topology (chain)**:
+```python
+coordinator.initialize(
+    num_peers=5,
+    topology_type="line",
+    topology_params={'bidirectional': True}
+)
+```
+
+**Fully Connected**:
+```python
+coordinator.initialize(
+    num_peers=5,
+    topology_type="full"
+)
+```
 
 ## 🚀 Quick Start
 
@@ -72,12 +121,13 @@ The API server will start on `http://localhost:8000`. Visit `http://localhost:80
 ### Basic Usage Example (Bearing Dataset)
 
 ```bash
-# 1. Initialize the system with 5 peers using bearing dataset
+# 1. Initialize the system with 5 peers using bearing dataset and ring topology
 curl -X POST "http://localhost:8000/api/init" \
   -H "Content-Type: application/json" \
   -d '{
     "num_peers": 5,
-    "hops": [1],
+    "topology_type": "ring",
+    "topology_params": {"hops": [1]},
     "dataset": "bearing",
     "data_distribution": "iid",
     "local_epochs": 2,
@@ -113,9 +163,11 @@ import requests
 
 BASE_URL = "http://localhost:8000"
 
-# Initialize with bearing dataset (auto-downloads)
+# Initialize with bearing dataset and star topology
 requests.post(f"{BASE_URL}/api/init", json={
     "num_peers": 5,
+    "topology_type": "star",
+    "topology_params": {"center_peer": 0},
     "dataset": "bearing",
     "data_distribution": "iid",
     "learning_rate": 0.001,
@@ -133,6 +185,14 @@ for i in range(20):
 metrics = requests.get(f"{BASE_URL}/api/metrics").json()
 requests.post(f"{BASE_URL}/api/stop")
 ```
+
+## 📖 Documentation
+
+- **[TOPOLOGY_GUIDE.md](TOPOLOGY_GUIDE.md)** - Comprehensive guide to network topologies
+- **[QUICKSTART_BEARING.md](QUICKSTART_BEARING.md)** - Quick start for bearing dataset
+- **[BEARING_DATASET.md](BEARING_DATASET.md)** - Bearing dataset documentation
+- **[NEW_FEATURES.md](NEW_FEATURES.md)** - Recent feature additions
+- **[API Documentation](http://localhost:8000/docs)** - Interactive API docs (when server is running)
 
 ## 📊 Datasets
 
