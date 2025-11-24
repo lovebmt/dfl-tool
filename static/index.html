@@ -336,6 +336,10 @@
                     <div class="status-label">Eval MSE</div>
                     <div class="status-value" id="mseValue">-</div>
                 </div>
+                <div class="status-item">
+                    <div class="status-label">Total Bandwidth</div>
+                    <div class="status-value" id="totalBandwidth" style="color: #3b82f6;">0 MB</div>
+                </div>
             </div>
         </div>
         
@@ -358,6 +362,17 @@
             <div class="chart-container">
                 <div class="chart-title">Peer Train Loss Comparison</div>
                 <div id="peerLossChart"></div>
+            </div>
+        </div>
+        
+        <div class="charts">
+            <div class="chart-container">
+                <div class="chart-title">Network Bandwidth Usage (per Round)</div>
+                <div id="bandwidthChart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Network Bandwidth Usage (Cumulative)</div>
+                <div id="bandwidthCumulativeChart"></div>
             </div>
         </div>
         
@@ -646,10 +661,41 @@
             margin: { t: 20, r: 20, b: 40, l: 60 }
         };
         
+        const bandwidthLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'Round', gridcolor: '#334155' },
+            yaxis: { title: 'Bandwidth (MB)', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 40, l: 60 },
+            showlegend: true
+        };
+        
+        const bandwidthCumulativeLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'Round', gridcolor: '#334155' },
+            yaxis: { title: 'Cumulative Bandwidth (MB)', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 40, l: 60 },
+            showlegend: true
+        };
+        
+        const bandwidthMatrixLayout = {
+            paper_bgcolor: '#1e293b',
+            plot_bgcolor: '#1e293b',
+            font: { color: '#e2e8f0' },
+            xaxis: { title: 'To Peer', gridcolor: '#334155' },
+            yaxis: { title: 'From Peer', gridcolor: '#334155' },
+            margin: { t: 20, r: 20, b: 60, l: 60 }
+        };
+        
         Plotly.newPlot('lossChart', [], lossLayout);
         Plotly.newPlot('mseChart', [], mseLayout);
         Plotly.newPlot('peerLossChart', [], peerLossLayout);
         Plotly.newPlot('dataDistChart', [], dataDistLayout);
+        Plotly.newPlot('bandwidthChart', [], bandwidthLayout);
+        Plotly.newPlot('bandwidthCumulativeChart', [], bandwidthCumulativeLayout);
         
         // Modal control functions - updated v3
         window.showConfigModal = function() {
@@ -1288,19 +1334,23 @@
         async function updateDashboard() {
             try {
                 console.log('[DEBUG] updateDashboard: fetching status and metrics');
-                const [statusRes, metricsRes] = await Promise.all([
+                const [statusRes, metricsRes, bandwidthRes] = await Promise.all([
                     fetch(`${API_BASE}/status`).then(r => r.json()),
-                    fetch(`${API_BASE}/metrics`).then(r => r.json())
+                    fetch(`${API_BASE}/metrics`).then(r => r.json()),
+                    fetch(`${API_BASE}/bandwidth`).then(r => r.json()).catch(() => ({ data: null }))
                 ]);
                 console.log('[DEBUG] Status response:', statusRes);
                 console.log('[DEBUG] Metrics response:', metricsRes);
+                console.log('[DEBUG] Bandwidth response:', bandwidthRes);
                 
                 // Extract data from response
                 const status = statusRes.data || statusRes;
                 const metrics = metricsRes.data || metricsRes;
+                const bandwidth = bandwidthRes.data || null;
                 
                 updateStatus(status);
                 updateCharts(metrics, status);  // Pass status for data distribution
+                updateBandwidth(bandwidth);  // Update bandwidth charts
                 updatePeers(metrics);
             } catch (error) {
                 console.error('Update failed:', error);
@@ -1429,6 +1479,95 @@
                 console.log('[DEBUG] Data distribution:', trainSamples);
                 Plotly.react('dataDistChart', [dataDistTrace], dataDistLayout);
             }
+        }
+        
+        function updateBandwidth(bandwidth) {
+            const bandwidthEl = document.getElementById('totalBandwidth');
+            
+            if (!bandwidth || !bandwidth.per_round || bandwidth.per_round.length === 0) {
+                console.log('[DEBUG] No bandwidth data');
+                if (bandwidthEl) bandwidthEl.textContent = '0 MB';
+                return;
+            }
+            
+            console.log('[DEBUG] Bandwidth data:', bandwidth);
+            
+            const perRound = bandwidth.per_round;
+            const rounds = perRound.map((_, i) => i + 1);
+            const totalSent = perRound.map(r => (r.total_sent / (1024 * 1024)).toFixed(3)); // Convert to MB (3 decimals)
+            const totalRecv = perRound.map(r => (r.total_recv / (1024 * 1024)).toFixed(3));
+            
+            // Calculate cumulative total
+            const cumulativeTotal = perRound.reduce((sum, r) => sum + r.total_sent + r.total_recv, 0);
+            const cumulativeMB = (cumulativeTotal / (1024 * 1024)).toFixed(3);
+            
+            console.log('[DEBUG] Cumulative bandwidth:', cumulativeMB, 'MB');
+            
+            if (bandwidthEl) bandwidthEl.textContent = `${cumulativeMB} MB`;
+            
+            // Update bandwidth chart
+            const bandwidthTraces = [
+                {
+                    x: rounds,
+                    y: totalSent,
+                    name: 'Sent',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#ef4444', width: 2 },
+                    marker: { size: 6 },
+                    fill: 'tozeroy'
+                },
+                {
+                    x: rounds,
+                    y: totalRecv,
+                    name: 'Received',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#3b82f6', width: 2 },
+                    marker: { size: 6 },
+                    fill: 'tozeroy'
+                }
+            ];
+            
+            Plotly.react('bandwidthChart', bandwidthTraces, bandwidthLayout);
+            
+            // Update cumulative bandwidth chart
+            const cumulativeSent = [];
+            const cumulativeRecv = [];
+            let sumSent = 0;
+            let sumRecv = 0;
+            
+            perRound.forEach(r => {
+                sumSent += r.total_sent / (1024 * 1024);
+                sumRecv += r.total_recv / (1024 * 1024);
+                cumulativeSent.push(sumSent.toFixed(3));
+                cumulativeRecv.push(sumRecv.toFixed(3));
+            });
+            
+            const cumulativeTraces = [
+                {
+                    x: rounds,
+                    y: cumulativeSent,
+                    name: 'Cumulative Sent',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#ef4444', width: 3 },
+                    marker: { size: 8 },
+                    fill: 'tozeroy'
+                },
+                {
+                    x: rounds,
+                    y: cumulativeRecv,
+                    name: 'Cumulative Received',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#3b82f6', width: 3 },
+                    marker: { size: 8 },
+                    fill: 'tozeroy'
+                }
+            ];
+            
+            Plotly.react('bandwidthCumulativeChart', cumulativeTraces, bandwidthCumulativeLayout);
         }
         
         function updatePeers(metrics) {
