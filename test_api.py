@@ -28,7 +28,6 @@ def test_init():
     config = {
         "num_peers": 3,
         "hops": [1],
-        "data_distribution": "iid",
         "local_epochs": 2,
         "learning_rate": 0.001,
         "batch_size": 64,

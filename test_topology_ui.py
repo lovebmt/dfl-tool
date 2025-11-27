@@ -16,7 +16,6 @@ def test_init_with_topologies():
                 'num_peers': 5,
                 'topology_type': 'ring',
                 'topology_params': {'hops': [1]},
-                'data_distribution': 'iid',
                 'local_epochs': 1,
                 'dataset': 'bearing'
             }
@@ -27,7 +26,6 @@ def test_init_with_topologies():
                 'num_peers': 5,
                 'topology_type': 'line',
                 'topology_params': {'bidirectional': True},
-                'data_distribution': 'iid',
                 'local_epochs': 1,
                 'dataset': 'bearing'
             }
@@ -38,7 +36,6 @@ def test_init_with_topologies():
                 'num_peers': 5,
                 'topology_type': 'mesh',
                 'topology_params': {'connectivity': 0.4},
-                'data_distribution': 'iid',
                 'local_epochs': 1,
                 'dataset': 'bearing'
             }
@@ -49,7 +46,6 @@ def test_init_with_topologies():
                 'num_peers': 4,
                 'topology_type': 'full',
                 'topology_params': {},
-                'data_distribution': 'iid',
                 'local_epochs': 1,
                 'dataset': 'bearing'
             }
@@ -104,7 +100,6 @@ def test_topology_endpoint():
         'num_peers': 3,
         'topology_type': 'ring',
         'topology_params': {'hops': [1]},
-        'data_distribution': 'iid',
         'local_epochs': 1,
         'dataset': 'bearing'
     }

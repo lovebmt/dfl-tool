@@ -435,14 +435,6 @@
                         </div>
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Data Distribution:</label>
-                        <select id="dataDistribution" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
-                            <option value="iid">IID (Independent and Identically Distributed)</option>
-                            <option value="non_iid">Non-IID (Dirichlet Distribution)</option>
-                            <option value="label_skew">Label Skew (Few labels per peer)</option>
-                        </select>
-                    </div>
-                    <div>
                         <label style="display: block; margin-bottom: 5px; opacity: 0.8;">Local Epochs:</label>
                         <input type="number" id="localEpochs" value="2" min="1" max="10" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;">
                     </div>
@@ -1174,7 +1166,6 @@
                     topology_type: topologyType,
                     topology_params: topologyParams,
                     hops: topologyType === 'ring' ? topologyParams.hops : [1], // backward compatibility
-                    data_distribution: document.getElementById('dataDistribution').value,
                     local_epochs: parseInt(document.getElementById('localEpochs').value),
                     learning_rate: parseFloat(document.getElementById('learningRate').value),
                     batch_size: parseInt(document.getElementById('batchSize').value),

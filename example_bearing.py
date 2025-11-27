@@ -27,7 +27,6 @@ def example_bearing_basic():
     response = requests.post(f"{BASE_URL}/api/init", json={
         "num_peers": 5,
         "hops": [1],
-        "data_distribution": "iid",
         "local_epochs": 2,
         "learning_rate": 0.001,
         "batch_size": 64,
@@ -77,7 +76,6 @@ def example_bearing_non_iid():
     response = requests.post(f"{BASE_URL}/api/init", json={
         "num_peers": 6,
         "hops": [1],
-        "data_distribution": "non_iid",  # Non-IID distribution
         "local_epochs": 2,
         "learning_rate": 0.001,
         "batch_size": 64,
@@ -111,7 +109,6 @@ def example_bearing_with_local_csv():
     response = requests.post(f"{BASE_URL}/api/init", json={
         "num_peers": 4,
         "hops": [1],
-        "data_distribution": "iid",
         "dataset": "bearing",
         "csv_path": "processed/bearing_merged_2.csv"  # Use downloaded file
     })
@@ -140,7 +137,6 @@ def example_bearing_fedprox():
     response = requests.post(f"{BASE_URL}/api/init", json={
         "num_peers": 5,
         "hops": [1],
-        "data_distribution": "non_iid",
         "local_epochs": 2,
         "learning_rate": 0.001,
         "batch_size": 64,

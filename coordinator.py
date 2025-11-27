@@ -55,7 +55,7 @@ class Coordinator:
         logger.info("Coordinator initialized")
     
     def initialize(self, num_peers: int, hops: List[int] = None,
-                  data_distribution: str = "iid", local_epochs: int = 1,
+                  local_epochs: int = 1,
                   learning_rate: float = 0.01, batch_size: int = 32,
                   device: str = "cpu", latency_ms: float = 0.0,
                   drop_prob: float = 0.0, aggregate_method: str = "avg",
@@ -67,7 +67,6 @@ class Coordinator:
         Args:
             num_peers: Number of peers
             hops: List of hop distances for ring topology (deprecated, use topology_params)
-            data_distribution: Data distribution type ('iid', 'non_iid', 'label_skew')
             local_epochs: Local training epochs per round
             learning_rate: Learning rate
             batch_size: Batch size
@@ -89,7 +88,7 @@ class Coordinator:
         if self.initialized:
             raise RuntimeError("Coordinator already initialized. Call reset() first.")
         
-        self._log(f"Initializing {num_peers} peers with {data_distribution} data distribution on {dataset} dataset")
+        self._log(f"Initializing {num_peers} peers on {dataset} dataset (using IID distribution)")
         
         # Handle backward compatibility for hops parameter
         if topology_params is None:
@@ -103,7 +102,6 @@ class Coordinator:
             'hops': hops or [1],  # Keep for backward compatibility
             'topology_type': topology_type,
             'topology_params': topology_params,
-            'data_distribution': data_distribution,
             'local_epochs': local_epochs,
             'learning_rate': learning_rate,
             'batch_size': batch_size,
@@ -123,7 +121,8 @@ class Coordinator:
         # Load and distribute data
         if dataset.lower() == "bearing":
             data_loader = BearingDatasetLoader(csv_filename=csv_path)
-            peer_data = data_loader.distribute_data(num_peers, data_distribution, peer_fractions=peer_data_fractions)
+            # Always use IID distribution for bearing time series data (no real labels)
+            peer_data = data_loader.distribute_data(num_peers, 'iid', peer_fractions=peer_data_fractions)
             # Get input/output dimensions from the dataset
             input_dim = data_loader.num_features
             output_dim = data_loader.num_classes

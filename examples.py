@@ -28,7 +28,6 @@ def example_basic_training():
     response = requests.post(f"{BASE_URL}/api/init", json={
         "num_peers": 5,
         "hops": [1],
-        "data_distribution": "iid",
         "local_epochs": 1,
         "learning_rate": 0.01,
         "batch_size": 32

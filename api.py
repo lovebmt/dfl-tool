@@ -54,7 +54,6 @@ coordinator = Coordinator()
 class InitRequest(BaseModel):
     num_peers: int = Field(default=DEFAULT_NUM_PEERS, ge=2, le=100)
     hops: List[int] = Field(default=[1])  # Deprecated, use topology_params
-    data_distribution: str = Field(default=DISTRIBUTION_IID)
     local_epochs: int = Field(default=DEFAULT_LOCAL_EPOCHS, ge=1)
     learning_rate: float = Field(default=DEFAULT_LEARNING_RATE, gt=0)
     batch_size: int = Field(default=DEFAULT_BATCH_SIZE, ge=1)
@@ -147,8 +146,7 @@ async def initialize_system(request: InitRequest):
     """
     try:
         logger.info(f"[API] Initialize request: num_peers={request.num_peers}, "
-                   f"topology_type={request.topology_type}, topology_params={request.topology_params}, "
-                   f"distribution={request.data_distribution}")
+                   f"topology_type={request.topology_type}, topology_params={request.topology_params}")
         
         if coordinator.initialized:
             raise HTTPException(status_code=400, detail="System already initialized. Call /api/reset first.")
@@ -156,7 +154,6 @@ async def initialize_system(request: InitRequest):
         coordinator.initialize(
             num_peers=request.num_peers,
             hops=request.hops,  # Backward compatibility
-            data_distribution=request.data_distribution,
             local_epochs=request.local_epochs,
             learning_rate=request.learning_rate,
             batch_size=request.batch_size,
