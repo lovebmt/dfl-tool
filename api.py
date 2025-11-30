@@ -9,6 +9,7 @@ from typing import Optional, List, Dict, Any
 import logging
 import uvicorn
 import os
+import torch
 
 from coordinator import Coordinator
 from config import (
@@ -434,6 +435,51 @@ async def get_logs(limit: int = 100):
     
     except Exception as e:
         logger.error(f"Get logs failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/peer_data_samples")
+async def get_peer_data_samples(num_samples: int = 100):
+    """Get first N samples from each peer's training data for visualization
+    
+    Args:
+        num_samples: Number of samples to retrieve per peer (default 100)
+    
+    Returns:
+        Dict with peer_id as key and list of samples as value
+    """
+    try:
+        if not coordinator.initialized:
+            raise HTTPException(status_code=400, detail="System not initialized")
+        
+        peer_samples = {}
+        
+        for peer_id, peer in enumerate(coordinator.peers):
+            # Get train loader
+            train_dataset = peer.train_loader.dataset
+            
+            # Collect samples (limit to num_samples or dataset size)
+            samples_to_collect = min(num_samples, len(train_dataset))
+            samples = []
+            
+            for i in range(samples_to_collect):
+                data, label = train_dataset[i]
+                # Convert tensor to list for JSON serialization
+                samples.append({
+                    'features': data.cpu().numpy().tolist() if isinstance(data, torch.Tensor) else data.tolist(),
+                    'label': int(label.item()) if isinstance(label, torch.Tensor) else int(label)
+                })
+            
+            peer_samples[peer_id] = samples
+        
+        return {
+            "success": True,
+            "num_samples": num_samples,
+            "peer_data": peer_samples
+        }
+    
+    except Exception as e:
+        logger.error(f"Get peer data samples failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

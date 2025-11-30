@@ -42,7 +42,7 @@ os.makedirs("reports_dfl", exist_ok=True)
 
 NUM_PEERS = 10
 NUM_ROUNDS = 50
-LOCAL_EPOCHS = 1
+LOCAL_EPOCHS = 5
 LEARNING_RATE = 0.001
 BATCH_SIZE = 128
 DEVICE = "cpu"
@@ -922,17 +922,6 @@ def create_mse_distribution_comparison(model_balanced: BearingAutoencoder, model
             'threshold_mean_2std': float(threshold_mean_2std_imbalanced)
         }
     }
-
-# ============================================================================
-# CONFIGURATION PARAMETERS
-# ============================================================================
-
-NUM_PEERS = 10
-NUM_ROUNDS = 50
-LOCAL_EPOCHS = 1
-LEARNING_RATE = 0.001
-BATCH_SIZE = 128
-DEVICE = "cpu"
 
 # ============================================================================
 # MAIN EXECUTION
